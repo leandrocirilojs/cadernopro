@@ -1,0 +1,48 @@
+{
+  "entities": {
+    "subjects": {
+      "description": "Matérias e disciplinas do curso de ADS",
+      "fields": {
+        "name": { "type": "string", "required": true },
+        "color": { "type": "string", "required": true },
+        "icon": { "type": "string", "required": false },
+        "order_index": { "type": "number", "required": false },
+        "created_at": { "type": "string", "required": false }
+      }
+    },
+    "notebook_elements": {
+      "description": "Anotações, post-its, tarefas, tabelas dinâmicas e códigos do caderno",
+      "fields": {
+        "subject_id": { "type": "string", "required": true },
+        "type": { "type": "string", "required": true },
+        "title": { "type": "string", "required": false },
+        "content": { "type": "string", "required": false },
+        "color": { "type": "string", "required": false },
+        "date": { "type": "string", "required": false },
+        "full_date": { "type": "string", "required": false },
+        "x": { "type": "number", "required": true },
+        "y": { "type": "number", "required": true },
+        "width": { "type": "number", "required": false },
+        "height": { "type": "number", "required": false },
+        "done": { "type": "number", "required": false },
+        "priority": { "type": "string", "required": false },
+        "pinned": { "type": "number", "required": false },
+        "language": { "type": "string", "required": false },
+        "table_data": { "type": "string", "required": false },
+        "created_at": { "type": "string", "required": false },
+        "updated_at": { "type": "string", "required": false }
+      }
+    },
+    "my_apps": {
+      "description": "Catálogo de aplicativos e projetos desenvolvidos",
+      "fields": {
+        "name": { "type": "string", "required": true },
+        "description": { "type": "string", "required": false },
+        "url": { "type": "string", "required": true },
+        "icon": { "type": "string", "required": false },
+        "category": { "type": "string", "required": false },
+        "created_at": { "type": "string", "required": false }
+      }
+    }
+  }
+}

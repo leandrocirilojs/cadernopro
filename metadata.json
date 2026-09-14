@@ -1,0 +1,6 @@
+{
+  "name": "Caderno ADS Pro",
+  "description": "Caderno digital inteligente para estudantes de Análise e Desenvolvimento de Sistemas integrado com Firebase Firestore, anotações ricas, post-its, tarefas e gerenciador de projetos.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
