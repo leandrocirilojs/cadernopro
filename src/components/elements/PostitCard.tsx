@@ -8,7 +8,7 @@ interface PostitCardProps {
   onUpdate: (id: string, data: Partial<NotebookElement>) => void;
   onDelete: (id: string) => void;
   isDraggable?: boolean;
-  onMouseDownDrag?: (e: React.MouseEvent) => void;
+  onMouseDownDrag?: (e: any) => void;
 }
 
 export const PostitCard: React.FC<PostitCardProps> = ({
@@ -58,11 +58,16 @@ export const PostitCard: React.FC<PostitCardProps> = ({
       {/* Header */}
       <div className="flex items-center justify-between pb-2 mb-2 border-b border-black/10">
         <div 
-          className={`flex items-center gap-1.5 text-xs font-bold ${isDraggable ? 'cursor-grab active:cursor-grabbing' : ''}`}
+          className={`flex items-center gap-1.5 text-xs font-bold select-none touch-none py-1 px-1 rounded-lg active:bg-black/10 ${
+            isDraggable ? 'cursor-grab active:cursor-grabbing' : ''
+          }`}
+          style={{ touchAction: 'none' }}
+          onPointerDown={isDraggable ? onMouseDownDrag : undefined}
+          onTouchStart={isDraggable ? onMouseDownDrag : undefined}
           onMouseDown={isDraggable ? onMouseDownDrag : undefined}
-          title={isDraggable ? "Arraste para mover o Post-it" : undefined}
+          title={isDraggable ? "Arraste para mover o Post-it (toque e arraste no celular)" : undefined}
         >
-          {isDraggable && <GripVertical className="w-3.5 h-3.5 opacity-60" />}
+          {isDraggable && <GripVertical className="w-3.5 h-3.5 opacity-60 shrink-0" />}
           <span>📌 Post-it</span>
         </div>
 

@@ -7,7 +7,7 @@ interface CodeCardProps {
   onUpdate: (id: string, data: Partial<NotebookElement>) => void;
   onDelete: (id: string) => void;
   isDraggable?: boolean;
-  onMouseDownDrag?: (e: React.MouseEvent) => void;
+  onMouseDownDrag?: (e: any) => void;
 }
 
 const LANGUAGES = [
@@ -60,10 +60,16 @@ export const CodeCard: React.FC<CodeCardProps> = ({
       {/* Header */}
       <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-800">
         <div 
-          className={`flex items-center gap-1.5 text-xs font-semibold text-slate-400 ${isDraggable ? 'cursor-grab active:cursor-grabbing' : ''}`}
+          className={`flex items-center gap-1.5 text-xs font-semibold text-slate-400 select-none touch-none py-1 px-1 rounded-lg active:bg-slate-800 ${
+            isDraggable ? 'cursor-grab active:cursor-grabbing' : ''
+          }`}
+          style={{ touchAction: 'none' }}
+          onPointerDown={isDraggable ? onMouseDownDrag : undefined}
+          onTouchStart={isDraggable ? onMouseDownDrag : undefined}
           onMouseDown={isDraggable ? onMouseDownDrag : undefined}
+          title={isDraggable ? "Arraste para mover no quadro (toque e arraste no celular)" : undefined}
         >
-          {isDraggable && <GripVertical className="w-4 h-4 text-slate-500" />}
+          {isDraggable && <GripVertical className="w-4 h-4 text-slate-500 shrink-0" />}
           <span className="text-purple-400 font-bold flex items-center gap-1">
             <CodeIcon className="w-3.5 h-3.5" /> Código ADS
           </span>

@@ -8,7 +8,7 @@ interface NoteCardProps {
   onUpdate: (id: string, data: Partial<NotebookElement>) => void;
   onDelete: (id: string) => void;
   isDraggable?: boolean;
-  onMouseDownDrag?: (e: React.MouseEvent) => void;
+  onMouseDownDrag?: (e: any) => void;
 }
 
 export const NoteCard: React.FC<NoteCardProps> = ({
@@ -67,11 +67,16 @@ export const NoteCard: React.FC<NoteCardProps> = ({
       {/* Header with Drag Handle & Actions */}
       <div className="flex items-center justify-between pb-2.5 mb-2 border-b border-slate-100">
         <div 
-          className={`flex items-center gap-1.5 text-xs font-semibold text-slate-500 ${isDraggable ? 'cursor-grab active:cursor-grabbing' : ''}`}
+          className={`flex items-center gap-1.5 text-xs font-semibold text-slate-500 select-none touch-none py-1 px-1 rounded-lg active:bg-slate-100 ${
+            isDraggable ? 'cursor-grab active:cursor-grabbing' : ''
+          }`}
+          style={{ touchAction: 'none' }}
+          onPointerDown={isDraggable ? onMouseDownDrag : undefined}
+          onTouchStart={isDraggable ? onMouseDownDrag : undefined}
           onMouseDown={isDraggable ? onMouseDownDrag : undefined}
-          title={isDraggable ? "Arraste para mover no quadro livre" : undefined}
+          title={isDraggable ? "Arraste para mover no quadro livre (toque e arraste no celular)" : undefined}
         >
-          {isDraggable && <GripVertical className="w-4 h-4 text-slate-400" />}
+          {isDraggable && <GripVertical className="w-4 h-4 text-slate-400 shrink-0" />}
           <span className="text-blue-600 font-bold">📝 Anotação</span>
         </div>
 
