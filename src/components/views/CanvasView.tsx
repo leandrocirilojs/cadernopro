@@ -37,6 +37,8 @@ export const CanvasView: React.FC<CanvasViewProps> = ({
     startY: number;
     initialX: number;
     initialY: number;
+    currentX: number;
+    currentY: number;
     elementRef: HTMLElement | null;
   } | null>(null);
 
@@ -55,48 +57,129 @@ export const CanvasView: React.FC<CanvasViewProps> = ({
     setCanvasDimensions({ minWidth: maxR, minHeight: maxB });
   }, [elements]);
 
-  const handleStartDrag = (e: React.MouseEvent, element: NotebookElement) => {
-    if ((e.target as HTMLElement).tagName === 'BUTTON' || (e.target as HTMLElement).tagName === 'INPUT') return;
+  const handleStartDrag = (e: any, element: NotebookElement) => {
+    // If user tapped a button, input, textarea or select, do not initiate drag
+    const target = e.target as HTMLElement;
+    if (
+      target.tagName === 'BUTTON' || 
+      target.tagName === 'INPUT' || 
+      target.tagName === 'SELECT' || 
+      target.tagName === 'TEXTAREA' ||
+      target.isContentEditable ||
+      target.closest('button') ||
+      target.closest('input') ||
+      target.closest('select')
+    ) {
+      return;
+    }
 
     const targetElem = document.getElementById(`canvas-item-${element.id}`);
     if (!targetElem) return;
 
+    // Get initial coordinates whether touch or mouse/pointer
+    let clientX = 0;
+    let clientY = 0;
+
+    if (e.touches && e.touches.length > 0) {
+      clientX = e.touches[0].clientX;
+      clientY = e.touches[0].clientY;
+    } else if (e.clientX !== undefined) {
+      clientX = e.clientX;
+      clientY = e.clientY;
+    } else {
+      return;
+    }
+
+    // Visual feedback when dragging starts
+    targetElem.style.zIndex = '999';
+    targetElem.classList.add('shadow-2xl', 'scale-[1.02]', 'ring-2', 'ring-blue-400');
+
     draggingItem.current = {
       id: element.id,
-      startX: e.clientX,
-      startY: e.clientY,
+      startX: clientX,
+      startY: clientY,
       initialX: element.x,
       initialY: element.y,
+      currentX: element.x,
+      currentY: element.y,
       elementRef: targetElem
     };
 
-    const handleMouseMove = (moveEvent: MouseEvent) => {
+    const updatePosition = (moveX: number, moveY: number) => {
       if (!draggingItem.current || !draggingItem.current.elementRef) return;
-      const dx = moveEvent.clientX - draggingItem.current.startX;
-      const dy = moveEvent.clientY - draggingItem.current.startY;
-      const newX = Math.max(20, draggingItem.current.initialX + dx);
-      const newY = Math.max(20, draggingItem.current.initialY + dy);
+      const dx = moveX - draggingItem.current.startX;
+      const dy = moveY - draggingItem.current.startY;
+      const newX = Math.max(10, Math.round(draggingItem.current.initialX + dx));
+      const newY = Math.max(10, Math.round(draggingItem.current.initialY + dy));
 
+      draggingItem.current.currentX = newX;
+      draggingItem.current.currentY = newY;
       draggingItem.current.elementRef.style.left = `${newX}px`;
       draggingItem.current.elementRef.style.top = `${newY}px`;
     };
 
-    const handleMouseUp = (upEvent: MouseEvent) => {
+    const endDrag = () => {
       if (draggingItem.current) {
-        const dx = upEvent.clientX - draggingItem.current.startX;
-        const dy = upEvent.clientY - draggingItem.current.startY;
-        const finalX = Math.max(20, Math.round(draggingItem.current.initialX + dx));
-        const finalY = Math.max(20, Math.round(draggingItem.current.initialY + dy));
-
-        onUpdatePosition(draggingItem.current.id, finalX, finalY);
+        const { id, currentX, currentY, elementRef } = draggingItem.current;
+        if (elementRef) {
+          elementRef.style.zIndex = element.pinned ? '15' : '1';
+          elementRef.classList.remove('shadow-2xl', 'scale-[1.02]', 'ring-2', 'ring-blue-400');
+        }
+        onUpdatePosition(id, currentX, currentY);
       }
       draggingItem.current = null;
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
+      cleanupListeners();
     };
 
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
+    // Listeners for pointer, touch, and mouse events
+    const handlePointerMove = (ev: PointerEvent) => {
+      ev.preventDefault();
+      updatePosition(ev.clientX, ev.clientY);
+    };
+
+    const handlePointerUp = () => {
+      endDrag();
+    };
+
+    const handleTouchMove = (ev: TouchEvent) => {
+      if (ev.touches.length > 0) {
+        ev.preventDefault(); // Stop mobile scrolling during item drag
+        updatePosition(ev.touches[0].clientX, ev.touches[0].clientY);
+      }
+    };
+
+    const handleTouchEnd = () => {
+      endDrag();
+    };
+
+    const handleMouseMove = (ev: MouseEvent) => {
+      ev.preventDefault();
+      updatePosition(ev.clientX, ev.clientY);
+    };
+
+    const handleMouseUp = () => {
+      endDrag();
+    };
+
+    const cleanupListeners = () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+      window.removeEventListener('pointercancel', handlePointerUp);
+      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('touchend', handleTouchEnd);
+      window.removeEventListener('touchcancel', handleTouchEnd);
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    window.addEventListener('pointermove', handlePointerMove, { passive: false });
+    window.addEventListener('pointerup', handlePointerUp);
+    window.addEventListener('pointercancel', handlePointerUp);
+    window.addEventListener('touchmove', handleTouchMove, { passive: false });
+    window.addEventListener('touchend', handleTouchEnd);
+    window.addEventListener('touchcancel', handleTouchEnd);
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
   };
 
   const handleCreateNoteFromForm = (e: React.FormEvent) => {
