@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { GripVertical, X, Check, Clock, AlertCircle } from 'lucide-react';
 import { NotebookElement, PriorityLevel } from '../../types';
+import { ResizeHandle } from './ResizeHandle';
 
 interface TaskCardProps {
   element: NotebookElement;
@@ -17,6 +18,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
   isDraggable = true,
   onMouseDownDrag
 }) => {
+  const cardRef = useRef<HTMLDivElement>(null);
   const isDone = Boolean(element.done);
   const [text, setText] = useState(element.content || '');
 
@@ -45,13 +47,18 @@ export const TaskCard: React.FC<TaskCardProps> = ({
 
   return (
     <div 
+      ref={cardRef}
       id={`task-card-${element.id}`}
-      className={`bg-white border rounded-2xl p-3.5 shadow-sm flex flex-col transition-all ${
+      className={`bg-white border rounded-2xl p-3.5 shadow-sm flex flex-col relative transition-all ${
         isDone 
           ? 'border-emerald-200 bg-emerald-50/20' 
           : 'border-slate-200 hover:border-slate-300'
       }`}
-      style={{ width: isDraggable ? `${element.width || 340}px` : '100%' }}
+      style={{ 
+        width: isDraggable ? `${element.width || 340}px` : '100%',
+        height: isDraggable && element.height ? `${element.height}px` : undefined,
+        minHeight: '120px'
+      }}
     >
       {/* Header */}
       <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-100">
@@ -94,7 +101,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
       </div>
 
       {/* Task Body */}
-      <div className="flex items-start gap-2.5 my-1">
+      <div className="flex-1 flex items-start gap-2.5 my-1 min-h-[44px]">
         <button
           type="button"
           onClick={handleToggleDone}
@@ -109,12 +116,11 @@ export const TaskCard: React.FC<TaskCardProps> = ({
         </button>
 
         <textarea
-          rows={2}
           value={text}
           onChange={(e) => setText(e.target.value)}
           onBlur={handleBlurText}
           placeholder="Descreva a tarefa de estudos..."
-          className={`w-full text-xs font-medium resize-none bg-transparent outline-none leading-relaxed transition ${
+          className={`w-full flex-1 h-full text-xs font-medium resize-none bg-transparent outline-none leading-relaxed transition ${
             isDone ? 'line-through text-slate-400' : 'text-slate-800'
           }`}
         />
@@ -130,6 +136,20 @@ export const TaskCard: React.FC<TaskCardProps> = ({
           {isDone ? 'Concluída ✓' : 'Pendente'}
         </span>
       </div>
+
+      {/* Interactive Resize Handle */}
+      {isDraggable && (
+        <ResizeHandle
+          cardRef={cardRef}
+          elementId={element.id}
+          initialWidth={element.width || 340}
+          initialHeight={element.height || 140}
+          minWidth={240}
+          minHeight={110}
+          onResizeEnd={(id, width, height) => onUpdate(id, { width, height })}
+          colorClass="text-slate-400 hover:text-indigo-600"
+        />
+      )}
     </div>
   );
 };

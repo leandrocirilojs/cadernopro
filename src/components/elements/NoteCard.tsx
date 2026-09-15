@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { GripVertical, X, Pin, Copy, Check, Sparkles } from 'lucide-react';
 import { NotebookElement } from '../../types';
 import { FormatToolbar } from '../FormatToolbar';
+import { ResizeHandle } from './ResizeHandle';
 
 interface NoteCardProps {
   element: NotebookElement;
@@ -22,6 +23,7 @@ export const NoteCard: React.FC<NoteCardProps> = ({
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [title, setTitle] = useState(element.title || 'Anotação sem título');
   const contentRef = useRef<HTMLDivElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
 
   // Sync content ref once
   useEffect(() => {
@@ -58,11 +60,16 @@ export const NoteCard: React.FC<NoteCardProps> = ({
 
   return (
     <div 
+      ref={cardRef}
       id={`note-card-${element.id}`}
-      className={`bg-white border rounded-2xl p-4 shadow-sm flex flex-col transition-all group ${
+      className={`bg-white border rounded-2xl p-4 shadow-sm flex flex-col relative transition-all group ${
         element.pinned ? 'border-blue-400 ring-2 ring-blue-100' : 'border-slate-200 hover:border-slate-300'
       }`}
-      style={{ width: isDraggable ? `${element.width || 420}px` : '100%' }}
+      style={{ 
+        width: isDraggable ? `${element.width || 420}px` : '100%',
+        height: isDraggable && element.height ? `${element.height}px` : undefined,
+        minHeight: '200px'
+      }}
     >
       {/* Header with Drag Handle & Actions */}
       <div className="flex items-center justify-between pb-2.5 mb-2 border-b border-slate-100">
@@ -144,7 +151,7 @@ export const NoteCard: React.FC<NoteCardProps> = ({
         contentEditable
         onBlur={handleBlurContent}
         data-placeholder="Estudante, digite suas anotações aqui..."
-        className="rich-text-content flex-1 min-h-[100px] text-sm text-slate-700 outline-none p-2 rounded-lg bg-slate-50/60 focus:bg-white focus:ring-1 focus:ring-blue-200 border border-transparent focus:border-blue-300 transition overflow-y-auto max-h-[360px]"
+        className="rich-text-content flex-1 min-h-[100px] text-sm text-slate-700 outline-none p-2 rounded-lg bg-slate-50/60 focus:bg-white focus:ring-1 focus:ring-blue-200 border border-transparent focus:border-blue-300 transition overflow-y-auto"
       />
 
       {/* Footer Timestamp */}
@@ -152,6 +159,20 @@ export const NoteCard: React.FC<NoteCardProps> = ({
         <span>{element.full_date || element.date}</span>
         <span className="text-[10px] text-slate-300">Auto-salvo no banco</span>
       </div>
+
+      {/* Interactive Resize Handle */}
+      {isDraggable && (
+        <ResizeHandle
+          cardRef={cardRef}
+          elementId={element.id}
+          initialWidth={element.width || 420}
+          initialHeight={element.height || 260}
+          minWidth={280}
+          minHeight={180}
+          onResizeEnd={(id, width, height) => onUpdate(id, { width, height })}
+          colorClass="text-slate-400 hover:text-blue-600"
+        />
+      )}
     </div>
   );
 };

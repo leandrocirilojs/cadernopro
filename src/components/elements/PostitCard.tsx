@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { GripVertical, X, Palette, Pin } from 'lucide-react';
 import { NotebookElement, POSTIT_COLORS } from '../../types';
 import { FormatToolbar } from '../FormatToolbar';
+import { ResizeHandle } from './ResizeHandle';
 
 interface PostitCardProps {
   element: NotebookElement;
@@ -20,6 +21,7 @@ export const PostitCard: React.FC<PostitCardProps> = ({
 }) => {
   const [showColorPicker, setShowColorPicker] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
 
   const currentColorConfig = POSTIT_COLORS.find(c => c.id === element.color) || POSTIT_COLORS[0];
 
@@ -45,6 +47,7 @@ export const PostitCard: React.FC<PostitCardProps> = ({
 
   return (
     <div 
+      ref={cardRef}
       id={`postit-card-${element.id}`}
       className="postit-card rounded-2xl p-4 flex flex-col transition-all relative border"
       style={{
@@ -52,7 +55,8 @@ export const PostitCard: React.FC<PostitCardProps> = ({
         borderColor: currentColorConfig.border,
         color: currentColorConfig.text,
         width: isDraggable ? `${element.width || 320}px` : '100%',
-        minHeight: '200px'
+        height: isDraggable && element.height ? `${element.height}px` : undefined,
+        minHeight: '180px'
       }}
     >
       {/* Header */}
@@ -135,7 +139,7 @@ export const PostitCard: React.FC<PostitCardProps> = ({
         contentEditable
         onBlur={handleBlurContent}
         data-placeholder="Lembrete rápido..."
-        className="flex-1 min-h-[90px] text-sm outline-none leading-relaxed p-1.5 rounded-lg bg-black/5 focus:bg-white/40 transition"
+        className="flex-1 min-h-[90px] text-sm outline-none leading-relaxed p-1.5 rounded-lg bg-black/5 focus:bg-white/40 transition overflow-y-auto"
       />
 
       {/* Footer */}
@@ -143,6 +147,20 @@ export const PostitCard: React.FC<PostitCardProps> = ({
         <span>{element.date}</span>
         <span>ADS Post-it</span>
       </div>
+
+      {/* Interactive Resize Handle */}
+      {isDraggable && (
+        <ResizeHandle
+          cardRef={cardRef}
+          elementId={element.id}
+          initialWidth={element.width || 320}
+          initialHeight={element.height || 220}
+          minWidth={200}
+          minHeight={160}
+          onResizeEnd={(id, width, height) => onUpdate(id, { width, height })}
+          colorClass="text-black/50 hover:text-black"
+        />
+      )}
     </div>
   );
 };
