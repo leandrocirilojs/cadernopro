@@ -1,6 +1,9 @@
 import express from 'express';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import fs from 'node:fs';
+import os from 'node:os';
+import { spawn } from 'node:child_process';
 import { GoogleGenAI } from '@google/genai';
 import {
   initDb,
@@ -307,6 +310,192 @@ app.post('/api/ai/study-assistant', async (req, res) => {
     res.json({ response: response.text });
   } catch (error: any) {
     res.status(500).json({ error: error.message || 'Erro ao processar com IA' });
+  }
+});
+
+// ==========================================
+// CODE RUNNER / INTERPRETER ENDPOINT
+// ==========================================
+app.post('/api/code/execute', async (req, res) => {
+  const { code, language = 'javascript', input = '' } = req.body;
+
+  if (!code || typeof code !== 'string') {
+    return res.status(400).json({
+      success: false,
+      output: '',
+      error: 'Nenhum código fornecido para execução.'
+    });
+  }
+
+  const lang = String(language).toLowerCase().trim();
+  const startTime = Date.now();
+
+  // HTML / CSS preview representation
+  if (lang === 'html' || lang === 'css') {
+    return res.json({
+      success: true,
+      output: 'Código HTML/CSS pronto para visualização.',
+      isHtml: true,
+      htmlContent: code,
+      executionTimeMs: Date.now() - startTime
+    });
+  }
+
+  // Create temporary directory for execution
+  let tmpDir = '';
+  try {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ads-runner-'));
+    let command = '';
+    let args: string[] = [];
+    let scriptFile = '';
+
+    if (lang === 'python' || lang === 'py') {
+      scriptFile = path.join(tmpDir, 'main.py');
+      fs.writeFileSync(scriptFile, code, 'utf-8');
+      command = 'python3';
+      args = ['-u', scriptFile];
+    } else if (lang === 'javascript' || lang === 'js') {
+      scriptFile = path.join(tmpDir, 'main.mjs');
+      fs.writeFileSync(scriptFile, code, 'utf-8');
+      command = 'node';
+      args = [scriptFile];
+    } else if (lang === 'typescript' || lang === 'ts') {
+      scriptFile = path.join(tmpDir, 'main.ts');
+      fs.writeFileSync(scriptFile, code, 'utf-8');
+      const localTsx = path.join(process.cwd(), 'node_modules', '.bin', 'tsx');
+      command = fs.existsSync(localTsx) ? localTsx : 'tsx';
+      args = [scriptFile];
+    } else if (lang === 'sql') {
+      // Execute SQL via Python in-memory SQLite wrapper
+      scriptFile = path.join(tmpDir, 'runner_sql.py');
+      const pySqlWrapper = [
+        'import sys',
+        'import sqlite3',
+        '',
+        'raw_sql = sys.stdin.read()',
+        "statements = [s.strip() for s in raw_sql.split(';') if s.strip()]",
+        '',
+        "conn = sqlite3.connect(':memory:')",
+        'cursor = conn.cursor()',
+        'query_count = 0',
+        '',
+        'for stmt in statements:',
+        '    try:',
+        '        cursor.execute(stmt)',
+        '        if cursor.description:',
+        '            cols = [c[0] for c in cursor.description]',
+        '            rows = cursor.fetchall()',
+        '            query_count += 1',
+        '            print(f"--- [Query {query_count}] ---")',
+        '            col_w = [len(str(c)) for c in cols]',
+        '            for r in rows:',
+        '                for i, v in enumerate(r):',
+        '                    col_w[i] = max(col_w[i], len(str(v)))',
+        '            header = " | ".join(str(c).ljust(col_w[i]) for i, c in enumerate(cols))',
+        '            div = "-+-".join("-" * col_w[i] for i in range(len(cols)))',
+        '            print(header)',
+        '            print(div)',
+        '            for r in rows:',
+        '                print(" | ".join(str(v).ljust(col_w[i]) for i, v in enumerate(r)))',
+        '            print(f"({len(rows)} registro(s) retornado(s))\\n")',
+        '        else:',
+        '            conn.commit()',
+        '            print(f"✓ Instrução executada com sucesso. ({cursor.rowcount} linha(s) afetada(s))")',
+        '    except Exception as e:',
+        '        print(f"✕ Erro SQL: {e}")'
+      ].join('\n');
+      fs.writeFileSync(scriptFile, pySqlWrapper, 'utf-8');
+      command = 'python3';
+      args = ['-u', scriptFile];
+    } else if (lang === 'bash' || lang === 'sh') {
+      scriptFile = path.join(tmpDir, 'script.sh');
+      fs.writeFileSync(scriptFile, code, 'utf-8');
+      command = 'bash';
+      args = [scriptFile];
+    } else {
+      // For compiled languages without local SDK in container (e.g. Java, C++), provide friendly simulation notice
+      return res.json({
+        success: false,
+        output: '',
+        error: 'O ambiente do container tem suporte nativo a execução e interpretação de Python 3, Node.js (JavaScript), TypeScript, consultas SQL e Bash. Para ' + language + ', recomendamos compilar em sua IDE local.',
+        executionTimeMs: Date.now() - startTime
+      });
+    }
+
+    // Spawn process with 10-second timeout guard
+    const child = spawn(command, args, {
+      cwd: tmpDir,
+      timeout: 10000,
+      env: {
+        ...process.env,
+        PYTHONUNBUFFERED: '1',
+        NODE_ENV: 'development'
+      }
+    });
+
+    let stdout = '';
+    let stderr = '';
+
+    child.stdout.on('data', (data) => {
+      stdout += data.toString();
+      if (stdout.length > 50000) {
+        child.kill();
+        stdout += '\n[Saída truncada: limite de 50.000 caracteres atingido]';
+      }
+    });
+
+    child.stderr.on('data', (data) => {
+      stderr += data.toString();
+    });
+
+    if (lang === 'sql') {
+      child.stdin.write(code);
+      child.stdin.end();
+    } else if (input) {
+      child.stdin.write(input);
+      child.stdin.end();
+    }
+
+    child.on('close', (exitCode) => {
+      // Clean up tmp files
+      try {
+        fs.rmSync(tmpDir, { recursive: true, force: true });
+      } catch (err) {}
+
+      const executionTimeMs = Date.now() - startTime;
+      res.json({
+        success: exitCode === 0,
+        output: stdout,
+        error: stderr,
+        exitCode,
+        executionTimeMs
+      });
+    });
+
+    child.on('error', (err) => {
+      try {
+        fs.rmSync(tmpDir, { recursive: true, force: true });
+      } catch (e) {}
+
+      res.status(500).json({
+        success: false,
+        output: '',
+        error: `Falha ao iniciar processo: ${err.message}`,
+        executionTimeMs: Date.now() - startTime
+      });
+    });
+  } catch (err: any) {
+    if (tmpDir) {
+      try {
+        fs.rmSync(tmpDir, { recursive: true, force: true });
+      } catch (e) {}
+    }
+    res.status(500).json({
+      success: false,
+      output: '',
+      error: `Erro durante a execução: ${err.message}`,
+      executionTimeMs: Date.now() - startTime
+    });
   }
 });
 
