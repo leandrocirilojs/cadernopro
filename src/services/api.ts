@@ -123,28 +123,5 @@ export const api = {
       throw new Error(data.error || 'Erro ao consultar IA');
     }
     return data.response;
-  },
-
-  // Code Runner / Interpreter
-  async executeCode(payload: {
-    code: string;
-    language: string;
-    input?: string;
-  }): Promise<{
-    success: boolean;
-    output: string;
-    error?: string;
-    exitCode?: number | null;
-    executionTimeMs?: number;
-    isHtml?: boolean;
-    htmlContent?: string;
-  }> {
-    const res = await fetch(`${API_BASE}/code/execute`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-    const data = await res.json();
-    return data;
   }
 };
