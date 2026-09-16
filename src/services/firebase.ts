@@ -413,6 +413,7 @@ export const firestoreService = {
       priority: data.priority || 'media',
       pinned: data.pinned || 0,
       meta_json: data.meta_json || '',
+      page: typeof data.page === 'number' ? data.page : 1,
       created_at: now.toISOString(),
       updated_at: now.toISOString()
     };
