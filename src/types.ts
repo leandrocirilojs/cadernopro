@@ -1,9 +1,13 @@
+export type PaperStyle = 'lines' | 'grid' | 'dots' | 'blank';
+
 export interface Subject {
   id: string;
   name: string;
   color: string;
   icon?: string;
   sort_order: number;
+  totalPages?: number;
+  paperStyle?: PaperStyle;
   created_at: string;
 }
 
@@ -37,6 +41,7 @@ export interface NotebookElement {
   priority: PriorityLevel;
   meta_json?: string;
   pinned: number; // 0 or 1
+  page?: number; // Folha atual do caderno (1, 2, 3...)
   created_at: string;
   updated_at: string;
 }
