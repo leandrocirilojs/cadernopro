@@ -111,17 +111,123 @@ export const api = {
     return firestoreService.importFullData(jsonData);
   },
 
-  // AI Assistant (Gemini API server-side proxy)
+  // AI Assistant (Gemini API server-side proxy with static warning)
   async askAI(prompt: string, context?: string, type?: 'summary' | 'quiz' | 'explain-code'): Promise<string> {
-    const res = await fetch(`${API_BASE}/ai/study-assistant`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt, context, type })
-    });
-    const data = await res.json();
-    if (!res.ok) {
+    try {
+      const res = await fetch(`${API_BASE}/ai/study-assistant`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt, context, type })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        return data.response;
+      }
+      const data = await res.json().catch(() => ({}));
       throw new Error(data.error || 'Erro ao consultar IA');
+    } catch (err: any) {
+      if (err.message && !err.message.includes('Failed to fetch') && !err.message.includes('NetworkError')) {
+        throw err;
+      }
+      return 'Nota do GitHub Pages (Modo Estático): Para usar o Tutor IA Gemini em produção sem servidor Node.js, você pode hospedar no Render/Vercel ou configurar a chamada direta com chave client-side. Suas anotações, matérias, tarefas e quadros continuam funcionando 100% no Firebase!';
     }
-    return data.response;
+  },
+
+  // Code Runner / Interpreter (Supports both server-side execution and client-side static mode)
+  async executeCode(payload: {
+    code: string;
+    language: string;
+    input?: string;
+  }): Promise<{
+    success: boolean;
+    output: string;
+    error?: string;
+    exitCode?: number | null;
+    executionTimeMs?: number;
+    isHtml?: boolean;
+    htmlContent?: string;
+  }> {
+    const startTime = performance.now();
+
+    // 1. If HTML, preview directly
+    if (payload.language === 'html') {
+      return {
+        success: true,
+        output: 'Preview HTML/CSS renderizado na aba visual.',
+        executionTimeMs: Math.round(performance.now() - startTime),
+        isHtml: true,
+        htmlContent: payload.code
+      };
+    }
+
+    // 2. Try server execution if backend is available
+    try {
+      const res = await fetch(`${API_BASE}/code/execute`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) {
+        const data = await res.json();
+        return data;
+      }
+    } catch {
+      // Backend not running (e.g. GitHub Pages static hosting), fallback to client-side runner
+    }
+
+    // 3. Client-side static execution fallback
+    if (payload.language === 'javascript' || payload.language === 'typescript') {
+      try {
+        const logs: string[] = [];
+        const originalLog = console.log;
+        const originalWarn = console.warn;
+        const originalError = console.error;
+
+        const capture = (...args: any[]) => {
+          logs.push(args.map(a => (typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a))).join(' '));
+        };
+
+        // Sandbox evaluation for JS
+        const sandboxFunc = new Function('console', `
+          "use strict";
+          try {
+            ${payload.code}
+          } catch(e) {
+            throw e;
+          }
+        `);
+
+        sandboxFunc({
+          log: capture,
+          warn: capture,
+          error: capture,
+          info: capture
+        });
+
+        const executionTimeMs = Math.round(performance.now() - startTime);
+        return {
+          success: true,
+          output: logs.length > 0 ? logs.join('\n') : 'Código executado com sucesso (sem saídas em console.log).',
+          executionTimeMs
+        };
+      } catch (err: any) {
+        return {
+          success: false,
+          output: '',
+          error: `Erro em tempo de execução: ${err.message || String(err)}`,
+          executionTimeMs: Math.round(performance.now() - startTime)
+        };
+      }
+    }
+
+    // For Python, Bash or SQL when on GitHub Pages (static mode without backend)
+    return {
+      success: false,
+      output: '',
+      error: `[Aviso GitHub Pages]: A linguagem '${payload.language}' necessita de compilador/interpretador de servidor.\n\n` +
+        `• No GitHub Pages (modo estático), JavaScript e HTML funcionam direto no navegador.\n` +
+        `• Seus códigos e anotações continuam salvos com segurança no Firebase Firestore!`,
+      executionTimeMs: Math.round(performance.now() - startTime)
+    };
   }
 };
