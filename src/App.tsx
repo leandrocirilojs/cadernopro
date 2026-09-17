@@ -115,9 +115,22 @@ export function App() {
 
     if (!defaultTitle) {
       if (type === 'note') defaultTitle = 'Nova Anotação';
-      else if (type === 'table') defaultTitle = 'Tabela de Dados';
+      else if (type === 'table') defaultTitle = 'Planilha sem título';
       else if (type === 'code') defaultTitle = 'Script ADS';
     }
+
+    const tableMetaJson = type === 'table' && !extraData?.meta_json 
+      ? JSON.stringify({
+          rows: 4,
+          cols: 4,
+          data: [
+            ['', '', '', ''],
+            ['', '', '', ''],
+            ['', '', '', ''],
+            ['', '', '', '']
+          ]
+        })
+      : extraData?.meta_json;
 
     try {
       const newElem = await api.createElement({
@@ -128,11 +141,11 @@ export function App() {
         color: defaultColor,
         x: initialX,
         y: initialY,
-        width: type === 'table' ? 440 : type === 'code' ? 440 : type === 'note' ? 420 : 320,
-        height: 220,
+        width: type === 'table' ? 480 : type === 'code' ? 440 : type === 'note' ? 420 : 320,
+        height: type === 'table' ? 260 : 220,
         done: 0,
         priority: extraData?.priority || 'media',
-        meta_json: extraData?.meta_json,
+        meta_json: tableMetaJson,
         ...extraData
       });
 
@@ -193,6 +206,15 @@ export function App() {
       setEditingSubject(null);
     } catch (err) {
       console.error('Error saving subject:', err);
+    }
+  };
+
+  const handleUpdateSubject = async (id: string, updates: Partial<Subject>) => {
+    try {
+      const updated = await api.updateSubject(id, updates);
+      setSubjects(prev => prev.map(s => s.id === updated.id ? updated : s));
+    } catch (err) {
+      console.error('Error updating subject:', err);
     }
   };
 
@@ -303,6 +325,7 @@ export function App() {
           onOpenAITutor={() => setAiTutorModalOpen(true)}
           dbStatus={dbStatus}
           elementCountsBySubject={elementCountsBySubject}
+          onCloseMobile={() => setMobileSidebarOpen(false)}
         />
       </div>
 
@@ -332,6 +355,8 @@ export function App() {
             onDeleteElement={handleDeleteElement}
             onAddNewElement={handleQuickInsert}
             activeSubjectName={currentSubject?.name || 'ADS'}
+            currentSubject={currentSubject}
+            onUpdateSubject={handleUpdateSubject}
           />
         )}
 
