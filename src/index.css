@@ -162,3 +162,32 @@
   font-family: monospace;
   font-size: 0.875em;
 }
+
+/* Kindle Reader Mode Themes */
+.kindle-bg-sepia {
+  background-color: #fbf0d9;
+}
+.kindle-sheet-sepia {
+  background-color: #fbf0d9 !important;
+  color: #3e2d1d !important;
+  box-shadow: 0 10px 40px -10px rgba(78, 52, 28, 0.25) !important;
+}
+
+.kindle-bg-paper {
+  background-color: #1a1a1c;
+}
+.kindle-sheet-paper {
+  background-color: #fffefb !important;
+  color: #1e293b !important;
+  box-shadow: 0 14px 45px -10px rgba(0, 0, 0, 0.5) !important;
+}
+
+.kindle-bg-dark {
+  background-color: #0f1115;
+}
+.kindle-sheet-dark {
+  background-color: #17191e !important;
+  color: #e2e8f0 !important;
+  border-color: #2e3440 !important;
+  box-shadow: 0 14px 45px -10px rgba(0, 0, 0, 0.8) !important;
+}
