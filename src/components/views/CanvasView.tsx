@@ -15,7 +15,14 @@ import {
   FileText, 
   Sparkles,
   Copy,
-  Info
+  Info,
+  Book,
+  X,
+  Maximize2,
+  Minimize2,
+  Sun,
+  Moon,
+  Coffee
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { NotebookElement, ElementType, Subject, PaperStyle } from '../../types';
@@ -144,9 +151,33 @@ export const CanvasView: React.FC<CanvasViewProps> = ({
     if (soundEnabled) playPaperSound();
   }, [currentPage, totalPages, soundEnabled]);
 
+  // Reader Mode (Kindle Mode): Hides all surrounding UI, leaves only pure sheet & transitions
+  const [isReaderMode, setIsReaderMode] = useState<boolean>(false);
+  const [readerTheme, setReaderTheme] = useState<'paper' | 'sepia' | 'dark'>('paper');
+  const [showReaderControls, setShowReaderControls] = useState<boolean>(true);
+  const readerControlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Auto-hide floating reader controls after 3 seconds of inactivity
+  const handleMouseMoveReader = () => {
+    if (!isReaderMode) return;
+    setShowReaderControls(true);
+    if (readerControlsTimeoutRef.current) {
+      clearTimeout(readerControlsTimeoutRef.current);
+    }
+    readerControlsTimeoutRef.current = setTimeout(() => {
+      setShowReaderControls(false);
+    }, 3200);
+  };
+
   // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Escape closes reader mode
+      if (e.key === 'Escape' && isReaderMode) {
+        setIsReaderMode(false);
+        return;
+      }
+
       // Don't trigger if user is typing
       const target = e.target as HTMLElement;
       if (
@@ -170,7 +201,7 @@ export const CanvasView: React.FC<CanvasViewProps> = ({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentPage, totalPages, goToPage]);
+  }, [currentPage, totalPages, goToPage, isReaderMode]);
 
   // Create multiple pages
   const handleAddMultiplePages = (count: number) => {
@@ -624,6 +655,16 @@ export const CanvasView: React.FC<CanvasViewProps> = ({
             className={`p-1.5 rounded-xl border transition cursor-pointer ${soundEnabled ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-slate-100 border-slate-200 text-slate-400'}`}
           >
             {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+          </button>
+
+          {/* Modo Leitura / Kindle Mode Toggle */}
+          <button
+            onClick={() => setIsReaderMode(true)}
+            title="Ativar Modo Leitura (Kindle) - Foco total na folha"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 hover:bg-black text-white text-xs font-bold rounded-xl shadow-xs transition cursor-pointer"
+          >
+            <Book className="w-3.5 h-3.5 text-amber-400" />
+            <span>Modo Leitura</span>
           </button>
         </div>
       </header>
@@ -1093,6 +1134,278 @@ export const CanvasView: React.FC<CanvasViewProps> = ({
           </div>
         </div>
       )}
+      {/* 5. FULLSCREEN KINDLE READER MODE OVERLAY */}
+      <AnimatePresence>
+        {isReaderMode && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            onMouseMove={handleMouseMoveReader}
+            className={`fixed inset-0 z-50 overflow-y-auto flex flex-col items-center select-text ${
+              readerTheme === 'sepia' 
+                ? 'kindle-bg-sepia' 
+                : readerTheme === 'dark' 
+                  ? 'kindle-bg-dark' 
+                  : 'kindle-bg-paper'
+            }`}
+          >
+            {/* Kindle Floating Ambient Top Toolbar (Auto-hides on inactivity) */}
+            <motion.div
+              initial={{ y: -30, opacity: 0 }}
+              animate={{ y: showReaderControls ? 0 : -30, opacity: showReaderControls ? 1 : 0 }}
+              transition={{ duration: 0.2 }}
+              className="sticky top-4 z-50 flex items-center justify-between gap-3 px-4 py-2 rounded-2xl bg-black/75 backdrop-blur-md text-white border border-white/10 shadow-2xl text-xs select-none max-w-xl w-[92%] my-2"
+            >
+              {/* Subject badge & Page info */}
+              <div className="flex items-center gap-2">
+                <Book className="w-4 h-4 text-amber-400 shrink-0" />
+                <span className="font-bold truncate max-w-[140px] sm:max-w-[200px]">
+                  {activeSubjectName}
+                </span>
+                <span className="opacity-40">•</span>
+                <span className="font-mono text-slate-300 font-semibold">
+                  Folha {currentPage} de {totalPages}
+                </span>
+              </div>
+
+              {/* Theme switchers (Paper, Sepia, Dark) */}
+              <div className="flex items-center gap-1 bg-white/10 p-0.5 rounded-xl border border-white/10">
+                <button
+                  onClick={() => setReaderTheme('paper')}
+                  title="Folha Branca Natural"
+                  className={`px-2 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer ${
+                    readerTheme === 'paper' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-300 hover:text-white'
+                  }`}
+                >
+                  Papel
+                </button>
+                <button
+                  onClick={() => setReaderTheme('sepia')}
+                  title="Modo Sépia (Kindle Clássico)"
+                  className={`px-2 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1 transition cursor-pointer ${
+                    readerTheme === 'sepia' ? 'bg-[#fbf0d9] text-[#4a3525] shadow-xs' : 'text-slate-300 hover:text-white'
+                  }`}
+                >
+                  <Coffee className="w-3 h-3" />
+                  <span>Sépia</span>
+                </button>
+                <button
+                  onClick={() => setReaderTheme('dark')}
+                  title="Modo Escuro / Noturno"
+                  className={`px-2 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1 transition cursor-pointer ${
+                    readerTheme === 'dark' ? 'bg-slate-800 text-amber-300 shadow-xs' : 'text-slate-300 hover:text-white'
+                  }`}
+                >
+                  <Moon className="w-3 h-3" />
+                  <span>Noite</span>
+                </button>
+              </div>
+
+              {/* Close Reader Mode Button */}
+              <button
+                onClick={() => setIsReaderMode(false)}
+                title="Sair do Modo Leitura (Esc)"
+                className="flex items-center gap-1 px-2.5 py-1 bg-red-600/90 hover:bg-red-600 text-white rounded-xl font-bold transition cursor-pointer ml-1"
+              >
+                <X className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline text-[11px]">Sair</span>
+              </button>
+            </motion.div>
+
+            {/* Main Kindle Sheet Centered Stage */}
+            <div className="w-full flex-1 flex flex-col items-center justify-center p-4 sm:p-8 md:p-12 notebook-page-flip-container relative">
+              <AnimatePresence mode="wait" custom={direction}>
+                <motion.div
+                  key={`kindle-page-${currentPage}`}
+                  custom={direction}
+                  variants={{
+                    enter: (dir: number) => ({
+                      rotateY: dir > 0 ? 32 : -32,
+                      x: dir > 0 ? 80 : -80,
+                      opacity: 0,
+                      scale: 0.97,
+                      transformOrigin: dir > 0 ? 'left center' : 'right center'
+                    }),
+                    center: {
+                      rotateY: 0,
+                      x: 0,
+                      opacity: 1,
+                      scale: 1,
+                      transition: {
+                        duration: 0.38,
+                        ease: [0.22, 1, 0.36, 1]
+                      }
+                    },
+                    exit: (dir: number) => ({
+                      rotateY: dir > 0 ? -32 : 32,
+                      x: dir > 0 ? -80 : 80,
+                      opacity: 0,
+                      scale: 0.97,
+                      transformOrigin: dir > 0 ? 'left center' : 'right center',
+                      transition: {
+                        duration: 0.3,
+                        ease: [0.22, 1, 0.36, 1]
+                      }
+                    })
+                  }}
+                  initial="enter"
+                  animate="center"
+                  exit="exit"
+                  className={`relative rounded-2xl border flex flex-col justify-between transition-colors duration-200 ${
+                    readerTheme === 'sepia' 
+                      ? 'kindle-sheet-sepia border-[#e6d7b8]' 
+                      : readerTheme === 'dark' 
+                        ? 'kindle-sheet-dark border-slate-800' 
+                        : 'kindle-sheet-paper border-slate-300'
+                  }`}
+                  style={{
+                    width: '100%',
+                    maxWidth: `${Math.max(1050, sheetDimensions.minWidth)}px`,
+                    minHeight: `${Math.max(820, sheetDimensions.minHeight)}px`
+                  }}
+                >
+                  {/* Spiral loops representation for realism in reader mode */}
+                  <div className="absolute left-0 top-0 bottom-0 w-12 flex flex-col justify-between py-6 pointer-events-none z-20 opacity-85">
+                    {spiralLoops.map((idx) => (
+                      <div key={`kindle-spiral-${idx}`} className="flex items-center pl-2 my-auto">
+                        <div className={`w-3.5 h-3.5 rounded-full border shadow-inner ${
+                          readerTheme === 'dark' 
+                            ? 'bg-slate-900 border-slate-800' 
+                            : 'bg-slate-300/80 border-slate-400'
+                        }`} />
+                        <div className="w-8 h-2.5 -ml-3.5 spiral-ring rounded-full shadow-md transform -rotate-6" />
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Clean Page Title Header in Kindle Mode */}
+                  <header className="shrink-0 pl-16 pr-8 pt-6 pb-4 border-b border-black/5 dark:border-white/5 flex items-center justify-between gap-4 select-none">
+                    <div className="flex items-center gap-3">
+                      <span 
+                        className="px-2.5 py-1 text-xs font-bold rounded-lg uppercase tracking-wider text-white shadow-xs"
+                        style={{ backgroundColor: currentSubject?.color || '#3b82f6' }}
+                      >
+                        {currentSubject?.icon || '📚'} {activeSubjectName}
+                      </span>
+                      <span className="text-sm font-bold opacity-90">
+                        {pageTitles[currentPage] || `Folha ${currentPage}`}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-3 text-xs font-mono opacity-70">
+                      <span>PÁG. {currentPage} / {totalPages}</span>
+                    </div>
+                  </header>
+
+                  {/* Clean Content Area */}
+                  <div 
+                    className="relative w-full flex-1"
+                    style={{ minHeight: `${contentMinHeight}px` }}
+                  >
+                    {pageElements.length === 0 ? (
+                      <div className="absolute inset-0 flex flex-col items-center justify-center opacity-40 select-none">
+                        <BookOpen className="w-12 h-12 mb-2" />
+                        <p className="text-sm font-medium">Folha em branco</p>
+                      </div>
+                    ) : (
+                      pageElements.map((el) => (
+                        <div
+                          key={`kindle-el-${el.id}`}
+                          className="absolute select-text"
+                          style={{
+                            left: `${el.x}px`,
+                            top: `${el.y}px`,
+                            zIndex: el.pinned ? 15 : 1
+                          }}
+                        >
+                          {el.type === 'note' && (
+                            <NoteCard
+                              element={el}
+                              onUpdate={onUpdateElement}
+                              onDelete={onDeleteElement}
+                              isDraggable={false}
+                            />
+                          )}
+                          {el.type === 'postit' && (
+                            <PostitCard
+                              element={el}
+                              onUpdate={onUpdateElement}
+                              onDelete={onDeleteElement}
+                              isDraggable={false}
+                            />
+                          )}
+                          {el.type === 'table' && (
+                            <TableCard
+                              element={el}
+                              onUpdate={onUpdateElement}
+                              onDelete={onDeleteElement}
+                              isDraggable={false}
+                            />
+                          )}
+                          {el.type === 'task' && (
+                            <TaskCard
+                              element={el}
+                              onUpdate={onUpdateElement}
+                              onDelete={onDeleteElement}
+                              isDraggable={false}
+                            />
+                          )}
+                          {el.type === 'code' && (
+                            <CodeCard
+                              element={el}
+                              onUpdate={onUpdateElement}
+                              onDelete={onDeleteElement}
+                              isDraggable={false}
+                            />
+                          )}
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  {/* Clean Kindle Footer */}
+                  <footer className="shrink-0 mt-auto pl-16 pr-8 py-4 border-t border-black/5 dark:border-white/5 flex items-center justify-between text-xs opacity-70 select-none">
+                    <span className="font-serif italic">Caderno ADS Pro • Leitura Concentrada</span>
+                    <span className="font-mono">Folha {currentPage} de {totalPages}</span>
+                  </footer>
+                </motion.div>
+              </AnimatePresence>
+            </div>
+
+            {/* Kindle Floating Bottom Flipping Bar (Visible on mouse move, auto-hides) */}
+            <motion.div
+              initial={{ y: 30, opacity: 0 }}
+              animate={{ y: showReaderControls ? 0 : 30, opacity: showReaderControls ? 1 : 0 }}
+              transition={{ duration: 0.2 }}
+              className="sticky bottom-4 z-50 flex items-center justify-between gap-3 px-5 py-2.5 rounded-full bg-black/80 backdrop-blur-md text-white border border-white/10 shadow-2xl text-xs select-none max-w-sm w-[90%] my-2"
+            >
+              <button
+                onClick={() => goToPage(currentPage - 1)}
+                disabled={currentPage <= 1}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full hover:bg-white/20 disabled:opacity-30 disabled:hover:bg-transparent transition cursor-pointer font-bold"
+              >
+                <ChevronLeft className="w-4 h-4" />
+                <span>Anterior</span>
+              </button>
+
+              <div className="font-mono font-bold text-amber-300">
+                {currentPage} / {totalPages}
+              </div>
+
+              <button
+                onClick={() => goToPage(currentPage + 1)}
+                disabled={currentPage >= totalPages}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full hover:bg-white/20 disabled:opacity-30 disabled:hover:bg-transparent transition cursor-pointer font-bold"
+              >
+                <span>Próxima</span>
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
