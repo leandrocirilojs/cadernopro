@@ -35,6 +35,7 @@ interface SidebarProps {
   onOpenAITutor: () => void;
   dbStatus: 'connected' | 'syncing' | 'error';
   elementCountsBySubject: Record<string, number>;
+  onCloseMobile?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -53,6 +54,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenAITutor,
   dbStatus,
   elementCountsBySubject,
+  onCloseMobile,
 }) => {
   const [calendarDate, setCalendarDate] = useState(new Date());
 
@@ -99,12 +101,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <span>Agenda</span>
             <span className="text-xs bg-blue-100 text-blue-700 font-semibold px-2 py-0.5 rounded-full">ADS PRO</span>
           </h1>
-          <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-amber-50/80 border border-amber-200 text-amber-800 text-[10px] font-semibold" title={`Firebase Firestore: ${dbStatus === 'connected' ? 'Conectado e Sincronizado' : dbStatus}`}>
-            <span className={`inline-block w-2 h-2 rounded-full ${
-              dbStatus === 'connected' ? 'bg-emerald-500 ring-2 ring-emerald-200' :
-              dbStatus === 'syncing' ? 'bg-amber-400 animate-pulse' : 'bg-rose-500'
-            }`} />
-            <span>Firebase</span>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-amber-50/80 border border-amber-200 text-amber-800 text-[10px] font-semibold" title={`Firebase Firestore: ${dbStatus === 'connected' ? 'Conectado e Sincronizado' : dbStatus}`}>
+              <span className={`inline-block w-2 h-2 rounded-full ${
+                dbStatus === 'connected' ? 'bg-emerald-500 ring-2 ring-emerald-200' :
+                dbStatus === 'syncing' ? 'bg-amber-400 animate-pulse' : 'bg-rose-500'
+              }`} />
+              <span>Firebase</span>
+            </div>
+            {onCloseMobile && (
+              <button
+                onClick={onCloseMobile}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 md:hidden transition cursor-pointer"
+                title="Fechar menu lateral"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            )}
           </div>
         </div>
         <p className="text-xs font-medium text-slate-500 capitalize">{todayHeaderLabel}</p>
