@@ -22,7 +22,11 @@ import {
   Minimize2,
   Sun,
   Moon,
-  Coffee
+  Coffee,
+  ZoomIn,
+  ZoomOut,
+  RotateCcw,
+  Smartphone
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { NotebookElement, ElementType, Subject, PaperStyle } from '../../types';
@@ -156,6 +160,46 @@ export const CanvasView: React.FC<CanvasViewProps> = ({
   const [readerTheme, setReaderTheme] = useState<'paper' | 'sepia' | 'dark'>('paper');
   const [showReaderControls, setShowReaderControls] = useState<boolean>(true);
   const readerControlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Responsive mobile zoom scale & screen detection
+  const [zoomScale, setZoomScale] = useState<number>(1);
+  const [isSmallScreen, setIsSmallScreen] = useState<boolean>(() => {
+    return typeof window !== 'undefined' ? window.innerWidth < 1024 : false;
+  });
+  const [customZoom, setCustomZoom] = useState<number | null>(null);
+
+  // Track window resize to adapt scale and detection automatically
+  useEffect(() => {
+    const handleResize = () => {
+      const width = window.innerWidth;
+      const isSmall = width < 1024;
+      setIsSmallScreen(isSmall);
+
+      if (customZoom === null) {
+        if (width < 480) {
+          // Mobile smartphones: fit smoothly around 1100px sheet base width
+          const calculated = Math.min(1, Math.max(0.32, (width - 16) / 1120));
+          setZoomScale(Number(calculated.toFixed(2)));
+        } else if (width < 768) {
+          // Large phones / small tablets
+          const calculated = Math.min(1, Math.max(0.45, (width - 24) / 1120));
+          setZoomScale(Number(calculated.toFixed(2)));
+        } else if (width < 1024) {
+          // Tablets / small laptops
+          const calculated = Math.min(1, Math.max(0.65, (width - 40) / 1120));
+          setZoomScale(Number(calculated.toFixed(2)));
+        } else {
+          setZoomScale(1);
+        }
+      } else {
+        setZoomScale(customZoom);
+      }
+    };
+
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [customZoom]);
 
   // Auto-hide floating reader controls after 3 seconds of inactivity
   const handleMouseMoveReader = () => {
@@ -502,14 +546,14 @@ export const CanvasView: React.FC<CanvasViewProps> = ({
       className="flex-1 overflow-auto bg-slate-200/70 relative p-4 md:p-6 flex flex-col items-center select-none"
     >
       {/* 1. Top Notebook Control Bar */}
-      <header className="w-full max-w-6xl mb-4 bg-white/95 backdrop-blur-md border border-slate-300/80 rounded-2xl shadow-sm p-3 flex flex-wrap items-center justify-between gap-3 z-30">
+      <header className="w-full max-w-6xl mb-3 sm:mb-4 bg-white/95 backdrop-blur-md border border-slate-300/80 rounded-2xl shadow-sm p-2 sm:p-3 flex flex-wrap items-center justify-between gap-2 sm:gap-3 z-30">
         
         {/* Left: Quick Insert Buttons */}
-        <div className="flex items-center gap-1.5 flex-wrap">
+        <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap">
           <button
             id="new-note-toggle-btn"
             onClick={() => setShowNewNoteForm(!showNewNoteForm)}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-xs transition"
+            className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-xs transition"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>{showNewNoteForm ? 'Fechar' : '+ Anotação'}</span>
@@ -517,35 +561,35 @@ export const CanvasView: React.FC<CanvasViewProps> = ({
 
           <button
             onClick={() => onAddNewElement('postit', { page: currentPage, x: 90, y: 110 })}
-            className="px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 text-xs font-semibold rounded-xl border border-amber-200 transition"
+            className="px-2 sm:px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 text-xs font-semibold rounded-xl border border-amber-200 transition"
           >
             + Post-it
           </button>
 
           <button
             onClick={() => onAddNewElement('task', { page: currentPage, x: 90, y: 110 })}
-            className="px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-800 text-xs font-semibold rounded-xl border border-indigo-200 transition"
+            className="px-2 sm:px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-800 text-xs font-semibold rounded-xl border border-indigo-200 transition"
           >
             + Tarefa
           </button>
 
           <button
             onClick={() => onAddNewElement('code', { page: currentPage, x: 90, y: 110 })}
-            className="px-2.5 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-800 text-xs font-semibold rounded-xl border border-purple-200 transition"
+            className="px-2 sm:px-2.5 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-800 text-xs font-semibold rounded-xl border border-purple-200 transition"
           >
             + Código
           </button>
 
           <button
             onClick={() => onAddNewElement('table', { page: currentPage, x: 90, y: 110 })}
-            className="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-semibold rounded-xl border border-emerald-200 transition"
+            className="px-2 sm:px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-semibold rounded-xl border border-emerald-200 transition"
           >
             + Tabela
           </button>
         </div>
 
         {/* Center: Page Flipping Navigation & Page Stamp */}
-        <div className="flex items-center gap-2 bg-slate-100/90 px-3 py-1.5 rounded-xl border border-slate-200 shadow-inner">
+        <div className="flex items-center gap-1.5 sm:gap-2 bg-slate-100/90 px-2.5 sm:px-3 py-1.5 rounded-xl border border-slate-200 shadow-inner">
           <button
             onClick={() => goToPage(currentPage - 1)}
             disabled={currentPage <= 1}
@@ -556,9 +600,9 @@ export const CanvasView: React.FC<CanvasViewProps> = ({
           </button>
 
           <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
-            <BookOpen className="w-3.5 h-3.5 text-blue-600" />
-            <span>Folha {currentPage} de {totalPages}</span>
-            <span className="text-[10px] font-medium text-slate-500 bg-white px-1.5 py-0.5 rounded border border-slate-200">
+            <BookOpen className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+            <span>Folha {currentPage}/{totalPages}</span>
+            <span className="text-[10px] font-medium text-slate-500 bg-white px-1.5 py-0.5 rounded border border-slate-200 hidden sm:inline">
               {pageElements.length} item(s)
             </span>
           </div>
@@ -574,7 +618,7 @@ export const CanvasView: React.FC<CanvasViewProps> = ({
         </div>
 
         {/* Right: Choice of How Many Pages to Create, Paper Style & Audio */}
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
           {/* Add 1 Quick Page */}
           <button
             onClick={() => {
@@ -588,7 +632,7 @@ export const CanvasView: React.FC<CanvasViewProps> = ({
               if (soundEnabled) playPaperSound();
             }}
             title="Adicionar 1 folha e virar para ela"
-            className="flex items-center gap-1 px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold rounded-xl border border-blue-200 transition cursor-pointer"
+            className="flex items-center gap-1 px-2 sm:px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold rounded-xl border border-blue-200 transition cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>+ Folha</span>
@@ -598,10 +642,11 @@ export const CanvasView: React.FC<CanvasViewProps> = ({
           <button
             onClick={() => setShowCreatePagesModal(true)}
             title="Escolher quantas folhas criar no caderno"
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-xl shadow-xs transition cursor-pointer"
+            className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-xl shadow-xs transition cursor-pointer"
           >
             <Layers className="w-3.5 h-3.5" />
-            <span>Criar Folhas...</span>
+            <span className="hidden sm:inline">Criar Folhas...</span>
+            <span className="sm:hidden">Folhas...</span>
           </button>
 
           {/* Paper Texture Selector */}
@@ -646,6 +691,51 @@ export const CanvasView: React.FC<CanvasViewProps> = ({
             >
               Lisa
             </button>
+          </div>
+
+          {/* Responsive Zoom Controls (especially useful on mobile/tablets) */}
+          <div className="flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200 text-xs">
+            <button
+              onClick={() => {
+                const next = Math.max(0.3, Number((zoomScale - 0.1).toFixed(2)));
+                setCustomZoom(next);
+                setZoomScale(next);
+              }}
+              title="Diminuir Zoom da Folha"
+              className="p-1 text-slate-600 hover:text-slate-900 hover:bg-white rounded-lg transition cursor-pointer"
+            >
+              <ZoomOut className="w-3.5 h-3.5" />
+            </button>
+            <span className="px-1.5 font-mono text-[11px] font-bold text-slate-700 select-none min-w-[40px] text-center">
+              {Math.round(zoomScale * 100)}%
+            </span>
+            <button
+              onClick={() => {
+                const next = Math.min(1.4, Number((zoomScale + 0.1).toFixed(2)));
+                setCustomZoom(next);
+                setZoomScale(next);
+              }}
+              title="Aumentar Zoom da Folha"
+              className="p-1 text-slate-600 hover:text-slate-900 hover:bg-white rounded-lg transition cursor-pointer"
+            >
+              <ZoomIn className="w-3.5 h-3.5" />
+            </button>
+            {customZoom !== null && (
+              <button
+                onClick={() => {
+                  setCustomZoom(null);
+                  const w = window.innerWidth;
+                  if (w < 480) setZoomScale(Number(Math.min(1, Math.max(0.32, (w - 16) / 1120)).toFixed(2)));
+                  else if (w < 768) setZoomScale(Number(Math.min(1, Math.max(0.45, (w - 24) / 1120)).toFixed(2)));
+                  else if (w < 1024) setZoomScale(Number(Math.min(1, Math.max(0.65, (w - 40) / 1120)).toFixed(2)));
+                  else setZoomScale(1);
+                }}
+                title="Ajustar automaticamente à tela"
+                className="p-1 text-blue-600 hover:bg-blue-50 rounded-lg transition cursor-pointer"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
 
           {/* Sound Toggle */}
@@ -756,7 +846,21 @@ export const CanvasView: React.FC<CanvasViewProps> = ({
       )}
 
       {/* 3. The 3D Notebook Container with Page-Flip Transitions */}
-      <div className="w-full max-w-6xl notebook-page-flip-container relative mt-0 mb-8 z-10">
+      <div 
+        className="w-full max-w-6xl notebook-page-flip-container relative mt-0 mb-8 z-10 overflow-x-auto pb-4 flex justify-center"
+        style={{
+          // When zoomed below 1, dynamically constrain container height so extra whitespace isn't excessive
+          minHeight: zoomScale < 1 ? `${Math.round(860 * zoomScale)}px` : undefined
+        }}
+      >
+        <div
+          style={{
+            transform: zoomScale !== 1 ? `scale(${zoomScale})` : undefined,
+            transformOrigin: 'top center',
+            transition: 'transform 0.2s ease-out'
+          }}
+          className="w-full flex justify-center"
+        >
         <AnimatePresence mode="wait" custom={direction}>
           <motion.div
             key={`notebook-page-${currentPage}`}
@@ -805,7 +909,7 @@ export const CanvasView: React.FC<CanvasViewProps> = ({
                     : 'notebook-paper-blank'
             }`}
             style={{
-              minWidth: `${Math.max(1100, sheetDimensions.minWidth)}px`,
+              minWidth: isSmallScreen ? `${Math.min(1100, Math.max(760, sheetDimensions.minWidth))}px` : `${Math.max(1100, sheetDimensions.minWidth)}px`,
               minHeight: `${Math.max(860, sheetDimensions.minHeight)}px`
             }}
           >
@@ -1043,6 +1147,7 @@ export const CanvasView: React.FC<CanvasViewProps> = ({
             </footer>
           </motion.div>
         </AnimatePresence>
+        </div>
       </div>
 
       {/* 4. Modal: Choose How Many Pages to Create */}
@@ -1156,66 +1261,110 @@ export const CanvasView: React.FC<CanvasViewProps> = ({
               initial={{ y: -30, opacity: 0 }}
               animate={{ y: showReaderControls ? 0 : -30, opacity: showReaderControls ? 1 : 0 }}
               transition={{ duration: 0.2 }}
-              className="sticky top-4 z-50 flex items-center justify-between gap-3 px-4 py-2 rounded-2xl bg-black/75 backdrop-blur-md text-white border border-white/10 shadow-2xl text-xs select-none max-w-xl w-[92%] my-2"
+              className="sticky top-2 sm:top-4 z-50 flex items-center justify-between gap-2 sm:gap-3 px-3 sm:px-4 py-2 rounded-2xl bg-black/85 backdrop-blur-md text-white border border-white/10 shadow-2xl text-xs select-none max-w-xl w-[96%] sm:w-[92%] my-2"
             >
               {/* Subject badge & Page info */}
-              <div className="flex items-center gap-2">
-                <Book className="w-4 h-4 text-amber-400 shrink-0" />
-                <span className="font-bold truncate max-w-[140px] sm:max-w-[200px]">
+              <div className="flex items-center gap-1.5 sm:gap-2 overflow-hidden">
+                <Book className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400 shrink-0" />
+                <span className="font-bold truncate max-w-[100px] sm:max-w-[180px]">
                   {activeSubjectName}
                 </span>
                 <span className="opacity-40">•</span>
-                <span className="font-mono text-slate-300 font-semibold">
-                  Folha {currentPage} de {totalPages}
+                <span className="font-mono text-slate-300 font-semibold whitespace-nowrap text-[11px] sm:text-xs">
+                  {currentPage}/{totalPages}
                 </span>
               </div>
 
-              {/* Theme switchers (Paper, Sepia, Dark) */}
-              <div className="flex items-center gap-1 bg-white/10 p-0.5 rounded-xl border border-white/10">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                {/* Kindle Zoom / Fit controls on small screens */}
+                <div className="flex items-center bg-white/10 p-0.5 rounded-xl border border-white/10 text-slate-200">
+                  <button
+                    onClick={() => {
+                      const next = Math.max(0.3, Number((zoomScale - 0.1).toFixed(2)));
+                      setCustomZoom(next);
+                      setZoomScale(next);
+                    }}
+                    title="Diminuir Zoom"
+                    className="p-1 hover:bg-white/20 rounded-lg transition cursor-pointer"
+                  >
+                    <ZoomOut className="w-3 h-3" />
+                  </button>
+                  <span className="px-1 font-mono text-[10px] font-bold">
+                    {Math.round(zoomScale * 100)}%
+                  </span>
+                  <button
+                    onClick={() => {
+                      const next = Math.min(1.4, Number((zoomScale + 0.1).toFixed(2)));
+                      setCustomZoom(next);
+                      setZoomScale(next);
+                    }}
+                    title="Aumentar Zoom"
+                    className="p-1 hover:bg-white/20 rounded-lg transition cursor-pointer"
+                  >
+                    <ZoomIn className="w-3 h-3" />
+                  </button>
+                </div>
+
+                {/* Theme switchers (Paper, Sepia, Dark) */}
+                <div className="flex items-center gap-0.5 sm:gap-1 bg-white/10 p-0.5 rounded-xl border border-white/10">
+                  <button
+                    onClick={() => setReaderTheme('paper')}
+                    title="Folha Branca Natural"
+                    className={`px-1.5 sm:px-2 py-1 rounded-lg text-[10px] sm:text-[11px] font-bold transition cursor-pointer ${
+                      readerTheme === 'paper' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-300 hover:text-white'
+                    }`}
+                  >
+                    Papel
+                  </button>
+                  <button
+                    onClick={() => setReaderTheme('sepia')}
+                    title="Modo Sépia (Kindle Clássico)"
+                    className={`px-1.5 sm:px-2 py-1 rounded-lg text-[10px] sm:text-[11px] font-bold flex items-center gap-1 transition cursor-pointer ${
+                      readerTheme === 'sepia' ? 'bg-[#fbf0d9] text-[#4a3525] shadow-xs' : 'text-slate-300 hover:text-white'
+                    }`}
+                  >
+                    <Coffee className="w-3 h-3 hidden sm:inline" />
+                    <span>Sépia</span>
+                  </button>
+                  <button
+                    onClick={() => setReaderTheme('dark')}
+                    title="Modo Escuro / Noturno"
+                    className={`px-1.5 sm:px-2 py-1 rounded-lg text-[10px] sm:text-[11px] font-bold flex items-center gap-1 transition cursor-pointer ${
+                      readerTheme === 'dark' ? 'bg-slate-800 text-amber-300 shadow-xs' : 'text-slate-300 hover:text-white'
+                    }`}
+                  >
+                    <Moon className="w-3 h-3 hidden sm:inline" />
+                    <span>Noite</span>
+                  </button>
+                </div>
+
+                {/* Close Reader Mode Button */}
                 <button
-                  onClick={() => setReaderTheme('paper')}
-                  title="Folha Branca Natural"
-                  className={`px-2 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer ${
-                    readerTheme === 'paper' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-300 hover:text-white'
-                  }`}
+                  onClick={() => setIsReaderMode(false)}
+                  title="Sair do Modo Leitura (Esc)"
+                  className="flex items-center gap-1 px-2 sm:px-2.5 py-1 bg-red-600/90 hover:bg-red-600 text-white rounded-xl font-bold transition cursor-pointer ml-0.5"
                 >
-                  Papel
-                </button>
-                <button
-                  onClick={() => setReaderTheme('sepia')}
-                  title="Modo Sépia (Kindle Clássico)"
-                  className={`px-2 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1 transition cursor-pointer ${
-                    readerTheme === 'sepia' ? 'bg-[#fbf0d9] text-[#4a3525] shadow-xs' : 'text-slate-300 hover:text-white'
-                  }`}
-                >
-                  <Coffee className="w-3 h-3" />
-                  <span>Sépia</span>
-                </button>
-                <button
-                  onClick={() => setReaderTheme('dark')}
-                  title="Modo Escuro / Noturno"
-                  className={`px-2 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1 transition cursor-pointer ${
-                    readerTheme === 'dark' ? 'bg-slate-800 text-amber-300 shadow-xs' : 'text-slate-300 hover:text-white'
-                  }`}
-                >
-                  <Moon className="w-3 h-3" />
-                  <span>Noite</span>
+                  <X className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline text-[11px]">Sair</span>
                 </button>
               </div>
-
-              {/* Close Reader Mode Button */}
-              <button
-                onClick={() => setIsReaderMode(false)}
-                title="Sair do Modo Leitura (Esc)"
-                className="flex items-center gap-1 px-2.5 py-1 bg-red-600/90 hover:bg-red-600 text-white rounded-xl font-bold transition cursor-pointer ml-1"
-              >
-                <X className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline text-[11px]">Sair</span>
-              </button>
             </motion.div>
 
             {/* Main Kindle Sheet Centered Stage */}
-            <div className="w-full flex-1 flex flex-col items-center justify-center p-4 sm:p-8 md:p-12 notebook-page-flip-container relative">
+            <div 
+              className="w-full flex-1 flex flex-col items-center justify-start sm:justify-center p-2 sm:p-6 md:p-10 notebook-page-flip-container relative overflow-x-auto"
+              style={{
+                minHeight: zoomScale < 1 ? `${Math.round(820 * zoomScale)}px` : undefined
+              }}
+            >
+              <div
+                style={{
+                  transform: zoomScale !== 1 ? `scale(${zoomScale})` : undefined,
+                  transformOrigin: 'top center',
+                  transition: 'transform 0.2s ease-out'
+                }}
+                className="w-full flex justify-center"
+              >
               <AnimatePresence mode="wait" custom={direction}>
                 <motion.div
                   key={`kindle-page-${currentPage}`}
@@ -1262,6 +1411,7 @@ export const CanvasView: React.FC<CanvasViewProps> = ({
                   }`}
                   style={{
                     width: '100%',
+                    minWidth: isSmallScreen ? `${Math.min(1050, Math.max(760, sheetDimensions.minWidth))}px` : `${Math.max(1050, sheetDimensions.minWidth)}px`,
                     maxWidth: `${Math.max(1050, sheetDimensions.minWidth)}px`,
                     minHeight: `${Math.max(820, sheetDimensions.minHeight)}px`
                   }}
@@ -1372,6 +1522,7 @@ export const CanvasView: React.FC<CanvasViewProps> = ({
                   </footer>
                 </motion.div>
               </AnimatePresence>
+              </div>
             </div>
 
             {/* Kindle Floating Bottom Flipping Bar (Visible on mouse move, auto-hides) */}
